@@ -1,4 +1,4 @@
-import React from 'react';
+
 import { Download, Sparkles, TrendingUp, Users, ShoppingCart, DollarSign } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';

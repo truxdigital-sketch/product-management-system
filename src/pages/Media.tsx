@@ -1,5 +1,4 @@
-import React from 'react';
-import { Upload, Search, Image as ImageIcon, File, Filter } from 'lucide-react';
+import { Upload, Search, Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
