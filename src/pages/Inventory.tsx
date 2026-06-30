@@ -1,20 +1,60 @@
-
+import { useState, useMemo } from 'react';
 import { Package, AlertTriangle, ArrowRightLeft, Plus, Search, MapPin } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-
-const inventoryData = [
-  { id: '1', product: 'Premium Wireless Headphones', sku: 'WH-1000XM5', warehouse: 'Main Hub - NY', stock: 45, reserved: 5, status: 'In Stock' },
-  { id: '2', product: 'Ergonomic Office Chair', sku: 'CH-ERGO-01', warehouse: 'East Coast Center', stock: 12, reserved: 2, status: 'Low Stock' },
-  { id: '3', product: 'Mechanical Keyboard v2', sku: 'KB-MECH-V2', warehouse: 'Main Hub - NY', stock: 0, reserved: 0, status: 'Out of Stock' },
-  { id: '4', product: 'Organic Cotton T-Shirt', sku: 'TS-ORG-M', warehouse: 'West Coast Hub', stock: 150, reserved: 20, status: 'In Stock' },
-  { id: '5', product: 'Smart Fitness Watch', sku: 'SW-FIT-02', warehouse: 'Main Hub - NY', stock: 8, reserved: 4, status: 'Low Stock' },
-];
+import { useInventoryStore } from '@/store/useInventoryStore';
+import { useProductStore } from '@/store/useProductStore';
+import { Modal } from '@/components/ui/modal';
 
 export function Inventory() {
+  const { inventory, warehouses, adjustStock } = useInventoryStore();
+  const { products } = useProductStore();
+
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedWarehouse, setSelectedWarehouse] = useState<string>('');
+
+  // Adjustment Modal State
+  const [adjustingItem, setAdjustingItem] = useState<{ productId: string, warehouseId: string } | null>(null);
+  const [adjustAmount, setAdjustAmount] = useState<number>(0);
+
+  const combinedData = useMemo(() => {
+    let data = inventory.map(inv => {
+      const product = products.find(p => p.id === inv.product_id);
+      const warehouse = warehouses.find(w => w.id === inv.warehouse_id);
+      return {
+        ...inv,
+        productName: product?.name || 'Unknown Product',
+        productSku: product?.sku || 'Unknown SKU',
+        warehouseName: warehouse?.name || 'Unknown Warehouse',
+        price: product?.price || 0,
+      };
+    });
+
+    if (selectedWarehouse) {
+      data = data.filter(d => d.warehouse_id === selectedWarehouse);
+    }
+    if (searchTerm) {
+      const lower = searchTerm.toLowerCase();
+      data = data.filter(d => d.productName.toLowerCase().includes(lower) || d.productSku.toLowerCase().includes(lower));
+    }
+
+    return data;
+  }, [inventory, products, warehouses, selectedWarehouse, searchTerm]);
+
+  const totalValue = combinedData.reduce((acc, curr) => acc + (curr.quantity * curr.price), 0);
+  const lowStockCount = combinedData.filter(d => d.status === 'low_stock' || d.status === 'out_of_stock').length;
+
+  const handleAdjustSubmit = () => {
+    if (adjustingItem && adjustAmount !== 0) {
+      adjustStock(adjustingItem.productId, adjustingItem.warehouseId, adjustAmount);
+      setAdjustingItem(null);
+      setAdjustAmount(0);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -35,8 +75,8 @@ export function Inventory() {
             <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">$124,592.00</div>
-            <p className="text-xs text-muted-foreground mt-1">Across 3 warehouses</p>
+            <div className="text-2xl font-bold">${totalValue.toFixed(2)}</div>
+            <p className="text-xs text-muted-foreground mt-1">Based on current stock</p>
           </CardContent>
         </Card>
         <Card>
@@ -45,7 +85,7 @@ export function Inventory() {
             <AlertTriangle className="h-4 w-4 text-yellow-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-yellow-600 dark:text-yellow-500">14</div>
+            <div className="text-2xl font-bold text-yellow-600 dark:text-yellow-500">{lowStockCount}</div>
             <p className="text-xs text-muted-foreground mt-1">Items below threshold</p>
           </CardContent>
         </Card>
@@ -55,14 +95,24 @@ export function Inventory() {
         <div className="p-4 border-b flex flex-col sm:flex-row justify-between items-center gap-4">
           <div className="relative w-full sm:w-96">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input type="search" placeholder="Search by SKU or Product Name..." className="w-full pl-9" />
+            <Input 
+              type="search" 
+              placeholder="Search by SKU or Product Name..." 
+              className="w-full pl-9" 
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
           </div>
           <div className="flex gap-2">
-             <select className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none">
-              <option>All Warehouses</option>
-              <option>Main Hub - NY</option>
-              <option>East Coast Center</option>
-              <option>West Coast Hub</option>
+             <select 
+               className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none"
+               value={selectedWarehouse}
+               onChange={(e) => setSelectedWarehouse(e.target.value)}
+             >
+              <option value="">All Warehouses</option>
+              {warehouses.map(w => (
+                <option key={w.id} value={w.id}>{w.name}</option>
+              ))}
             </select>
           </div>
         </div>
@@ -78,32 +128,65 @@ export function Inventory() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {inventoryData.map(item => (
-              <TableRow key={item.id}>
-                <TableCell>
-                  <div className="font-medium">{item.product}</div>
-                  <div className="text-sm text-muted-foreground">{item.sku}</div>
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-1 text-sm">
-                    <MapPin className="h-3 w-3 text-muted-foreground" /> {item.warehouse}
-                  </div>
-                </TableCell>
-                <TableCell className="font-medium">{item.stock}</TableCell>
-                <TableCell className="text-muted-foreground">{item.reserved}</TableCell>
-                <TableCell>
-                  <Badge variant={item.status === 'In Stock' ? 'success' : item.status === 'Low Stock' ? 'warning' : 'destructive'}>
-                    {item.status}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-right">
-                  <Button variant="outline" size="sm">Adjust</Button>
+            {combinedData.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={6} className="h-32 text-center text-muted-foreground">
+                  No inventory records found.
                 </TableCell>
               </TableRow>
-            ))}
+            ) : (
+              combinedData.map(item => (
+                <TableRow key={item.id}>
+                  <TableCell>
+                    <div className="font-medium">{item.productName}</div>
+                    <div className="text-sm text-muted-foreground">{item.productSku}</div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-1 text-sm">
+                      <MapPin className="h-3 w-3 text-muted-foreground" /> {item.warehouseName}
+                    </div>
+                  </TableCell>
+                  <TableCell className="font-medium">{item.quantity}</TableCell>
+                  <TableCell className="text-muted-foreground">{item.reserved_quantity}</TableCell>
+                  <TableCell>
+                    <Badge variant={item.status === 'in_stock' ? 'success' : item.status === 'low_stock' ? 'warning' : 'destructive'}>
+                      {item.status.replace('_', ' ')}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button variant="outline" size="sm" onClick={() => setAdjustingItem({ productId: item.product_id, warehouseId: item.warehouse_id })}>
+                      Adjust
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
           </TableBody>
         </Table>
       </Card>
+
+      <Modal
+        isOpen={!!adjustingItem}
+        onClose={() => { setAdjustingItem(null); setAdjustAmount(0); }}
+        title="Adjust Stock"
+        description="Add or subtract from the current inventory quantity."
+      >
+        <div className="space-y-4 py-4">
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Adjustment Amount (+ or -)</label>
+            <Input 
+              type="number" 
+              placeholder="e.g. 5 or -2" 
+              value={adjustAmount || ''} 
+              onChange={(e) => setAdjustAmount(Number(e.target.value))}
+            />
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => { setAdjustingItem(null); setAdjustAmount(0); }}>Cancel</Button>
+            <Button onClick={handleAdjustSubmit}>Confirm Adjustment</Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

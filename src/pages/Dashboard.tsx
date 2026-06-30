@@ -1,18 +1,16 @@
-
 import { 
-  Package, 
-  TrendingUp, 
-  AlertCircle, 
-  DollarSign,
-  ArrowUpRight,
-  ArrowDownRight
+  Package, TrendingUp, AlertCircle, DollarSign, ArrowUpRight, ArrowDownRight
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { useNavigate } from 'react-router-dom';
+import { useProductStore } from '@/store/useProductStore';
+import { useCategoryStore } from '@/store/useCategoryStore';
+import { useInventoryStore } from '@/store/useInventoryStore';
 
-const data = [
+const chartData = [
   { name: 'Jan', total: 1200 },
   { name: 'Feb', total: 2100 },
   { name: 'Mar', total: 1800 },
@@ -22,14 +20,28 @@ const data = [
   { name: 'Jul', total: 3800 },
 ];
 
-const recentProducts = [
-  { id: 1, name: 'Premium Wireless Headphones', price: '$299.00', status: 'In Stock', sales: 124 },
-  { id: 2, name: 'Ergonomic Office Chair', price: '$499.00', status: 'Low Stock', sales: 86 },
-  { id: 3, name: 'Mechanical Keyboard v2', price: '$159.00', status: 'In Stock', sales: 210 },
-  { id: 4, name: 'USB-C Hub Pro', price: '$79.00', status: 'Out of Stock', sales: 342 },
-];
-
 export function Dashboard() {
+  const navigate = useNavigate();
+  const { products } = useProductStore();
+  const { categories } = useCategoryStore();
+  const { inventory } = useInventoryStore();
+
+  const totalProducts = products.length;
+  const activeCategories = categories.length;
+  const lowStockCount = inventory.filter(i => i.quantity < 10).length;
+  
+  // Mock sales data based on existing products for the UI
+  const topProducts = products.slice(0, 4).map(p => {
+    const inv = inventory.find(i => i.product_id === p.id);
+    return {
+      id: p.id,
+      name: p.name,
+      price: `$${p.price.toFixed(2)}`,
+      status: inv ? (inv.quantity === 0 ? 'Out of Stock' : inv.quantity < 10 ? 'Low Stock' : 'In Stock') : 'Unknown',
+      sales: Math.floor(Math.random() * 500) // Mock sales figure
+    };
+  });
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -39,7 +51,7 @@ export function Dashboard() {
         </div>
         <div className="flex gap-2">
           <Button variant="outline">Download Report</Button>
-          <Button>Add Product</Button>
+          <Button onClick={() => navigate('/products/new')}>Add Product</Button>
         </div>
       </div>
 
@@ -50,10 +62,10 @@ export function Dashboard() {
             <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">1,248</div>
+            <div className="text-2xl font-bold">{totalProducts}</div>
             <p className="text-xs text-muted-foreground mt-1 flex items-center">
               <ArrowUpRight className="h-3 w-3 text-green-500 mr-1" />
-              <span className="text-green-500 font-medium">+12%</span> from last month
+              <span className="text-green-500 font-medium">Live from store</span>
             </p>
           </CardContent>
         </Card>
@@ -76,10 +88,10 @@ export function Dashboard() {
             <AlertCircle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-yellow-600 dark:text-yellow-500">24</div>
+            <div className="text-2xl font-bold text-yellow-600 dark:text-yellow-500">{lowStockCount}</div>
             <p className="text-xs text-muted-foreground mt-1 flex items-center">
               <ArrowDownRight className="h-3 w-3 text-destructive mr-1" />
-              <span className="text-destructive font-medium">-4</span> since yesterday
+              <span className="text-destructive font-medium">Needs attention</span>
             </p>
           </CardContent>
         </Card>
@@ -89,9 +101,9 @@ export function Dashboard() {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">32</div>
+            <div className="text-2xl font-bold">{activeCategories}</div>
             <p className="text-xs text-muted-foreground mt-1 flex items-center">
-              <span className="text-muted-foreground">Across 8 main departments</span>
+              <span className="text-muted-foreground">Managed categories</span>
             </p>
           </CardContent>
         </Card>
@@ -106,7 +118,7 @@ export function Dashboard() {
           <CardContent className="pl-0">
             <div className="h-[300px] w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={data} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                <AreaChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                   <defs>
                     <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
@@ -134,25 +146,29 @@ export function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-6">
-              {recentProducts.map((product) => (
-                <div key={product.id} className="flex items-center">
-                  <div className="w-10 h-10 rounded-md bg-muted flex items-center justify-center mr-4 shrink-0">
-                    <Package className="h-5 w-5 text-muted-foreground" />
-                  </div>
-                  <div className="flex-1 space-y-1 overflow-hidden">
-                    <p className="text-sm font-medium leading-none truncate">{product.name}</p>
-                    <div className="flex items-center text-xs text-muted-foreground">
-                      {product.price}
+              {topProducts.length === 0 ? (
+                <div className="text-center text-muted-foreground py-8">No products found.</div>
+              ) : (
+                topProducts.map((product) => (
+                  <div key={product.id} className="flex items-center cursor-pointer hover:bg-muted/50 p-2 -mx-2 rounded-lg transition-colors" onClick={() => navigate(`/products/${product.id}`)}>
+                    <div className="w-10 h-10 rounded-md bg-muted flex items-center justify-center mr-4 shrink-0">
+                      <Package className="h-5 w-5 text-muted-foreground" />
+                    </div>
+                    <div className="flex-1 space-y-1 overflow-hidden">
+                      <p className="text-sm font-medium leading-none truncate">{product.name}</p>
+                      <div className="flex items-center text-xs text-muted-foreground">
+                        {product.price}
+                      </div>
+                    </div>
+                    <div className="flex flex-col items-end gap-1 shrink-0 ml-4">
+                      <div className="font-medium text-sm">{product.sales} sales</div>
+                      <Badge variant={product.status === 'In Stock' ? 'success' : product.status === 'Low Stock' ? 'warning' : 'destructive'}>
+                        {product.status}
+                      </Badge>
                     </div>
                   </div>
-                  <div className="flex flex-col items-end gap-1 shrink-0 ml-4">
-                    <div className="font-medium text-sm">{product.sales} sales</div>
-                    <Badge variant={product.status === 'In Stock' ? 'success' : product.status === 'Low Stock' ? 'warning' : 'destructive'}>
-                      {product.status}
-                    </Badge>
-                  </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </CardContent>
         </Card>

@@ -17,6 +17,7 @@ function App() {
           <Route index element={<Dashboard />} />
           <Route path="products" element={<ProductList />} />
           <Route path="products/new" element={<ProductEditor />} />
+          <Route path="products/:id" element={<ProductEditor />} />
           <Route path="categories" element={<Categories />} />
           <Route path="media" element={<Media />} />
           <Route path="inventory" element={<Inventory />} />

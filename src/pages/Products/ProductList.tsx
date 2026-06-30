@@ -1,34 +1,53 @@
-
+import { useState } from 'react';
 import { 
-  Plus, 
-  Search, 
-  Filter, 
-  Download, 
-  MoreHorizontal
+  Plus, Search, Filter, Download, MoreHorizontal, Edit, Copy, Trash2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow 
 } from '@/components/ui/table';
 import { useNavigate } from 'react-router-dom';
-
-const products = [
-  { id: '1', name: 'Premium Wireless Headphones', sku: 'WH-1000XM5', category: 'Electronics', price: 299.00, stock: 45, status: 'Published' },
-  { id: '2', name: 'Ergonomic Office Chair', sku: 'CH-ERGO-01', category: 'Furniture', price: 499.00, stock: 12, status: 'Low Stock' },
-  { id: '3', name: 'Mechanical Keyboard v2', sku: 'KB-MECH-V2', category: 'Electronics', price: 159.00, stock: 0, status: 'Out of Stock' },
-  { id: '4', name: 'Organic Cotton T-Shirt', sku: 'TS-ORG-M', category: 'Apparel', price: 29.00, stock: 150, status: 'Draft' },
-  { id: '5', name: 'Smart Fitness Watch', sku: 'SW-FIT-02', category: 'Electronics', price: 199.00, stock: 8, status: 'Low Stock' },
-];
+import { useProductStore } from '@/store/useProductStore';
+import { ConfirmModal } from '@/components/ui/modal';
 
 export function ProductList() {
   const navigate = useNavigate();
+  const { products, deleteProduct, duplicateProduct } = useProductStore();
+  
+  const [searchTerm, setSearchTerm] = useState('');
+  const [page, setPage] = useState(1);
+  const itemsPerPage = 10;
+
+  // Modals state
+  const [productToDelete, setProductToDelete] = useState<string | null>(null);
+  
+  // Action menu state
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+
+  // Filtering
+  const filteredProducts = products.filter(p => 
+    p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    p.sku.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  // Pagination
+  const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
+  const paginatedProducts = filteredProducts.slice((page - 1) * itemsPerPage, page * itemsPerPage);
+
+  const handleDelete = () => {
+    if (productToDelete) {
+      deleteProduct(productToDelete);
+      setProductToDelete(null);
+      setOpenMenuId(null);
+    }
+  };
+
+  const handleDuplicate = (id: string) => {
+    duplicateProduct(id);
+    setOpenMenuId(null);
+  };
 
   return (
     <div className="space-y-6">
@@ -55,8 +74,10 @@ export function ProductList() {
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               type="search"
-              placeholder="Search products..."
+              placeholder="Search by name or SKU..."
               className="w-full pl-9"
+              value={searchTerm}
+              onChange={(e) => { setSearchTerm(e.target.value); setPage(1); }}
             />
           </div>
           <div className="flex gap-2 w-full sm:w-auto">
@@ -75,60 +96,105 @@ export function ProductList() {
               </TableHead>
               <TableHead>Product Name</TableHead>
               <TableHead>SKU</TableHead>
-              <TableHead>Category</TableHead>
               <TableHead>Price</TableHead>
-              <TableHead>Stock</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {products.map((product) => (
-              <TableRow key={product.id}>
-                <TableCell>
-                  <input type="checkbox" className="rounded border-input bg-background" />
-                </TableCell>
-                <TableCell className="font-medium">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-md bg-muted flex items-center justify-center shrink-0 border">
-                      <img src={`https://placehold.co/40x40/png?text=${product.name.charAt(0)}`} className="rounded-md" alt="" />
-                    </div>
-                    {product.name}
-                  </div>
-                </TableCell>
-                <TableCell className="text-muted-foreground">{product.sku}</TableCell>
-                <TableCell>{product.category}</TableCell>
-                <TableCell>${product.price.toFixed(2)}</TableCell>
-                <TableCell>{product.stock}</TableCell>
-                <TableCell>
-                  <Badge 
-                    variant={
-                      product.status === 'Published' ? 'success' : 
-                      product.status === 'Low Stock' ? 'warning' : 
-                      product.status === 'Out of Stock' ? 'destructive' : 'secondary'
-                    }
-                  >
-                    {product.status}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-right">
-                  <Button variant="ghost" size="icon">
-                    <MoreHorizontal className="h-4 w-4" />
-                  </Button>
+            {paginatedProducts.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={6} className="h-32 text-center text-muted-foreground">
+                  No products found.
                 </TableCell>
               </TableRow>
-            ))}
+            ) : (
+              paginatedProducts.map((product) => (
+                <TableRow key={product.id}>
+                  <TableCell>
+                    <input type="checkbox" className="rounded border-input bg-background" />
+                  </TableCell>
+                  <TableCell className="font-medium">
+                    <div className="flex items-center gap-3 cursor-pointer hover:underline" onClick={() => navigate(`/products/${product.id}`)}>
+                      <div className="w-10 h-10 rounded-md bg-muted flex items-center justify-center shrink-0 border overflow-hidden">
+                        {product.images?.[0] ? (
+                          <img src={product.images[0]} className="w-full h-full object-cover" alt="" />
+                        ) : (
+                          <span className="text-muted-foreground text-xs">{product.name.charAt(0)}</span>
+                        )}
+                      </div>
+                      {product.name}
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">{product.sku}</TableCell>
+                  <TableCell>${product.price.toFixed(2)}</TableCell>
+                  <TableCell>
+                    <Badge 
+                      variant={
+                        product.status === 'published' ? 'success' : 
+                        product.status === 'archived' ? 'destructive' : 'secondary'
+                      }
+                      className="capitalize"
+                    >
+                      {product.status}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right relative">
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={() => setOpenMenuId(openMenuId === product.id ? null : product.id)}
+                    >
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                    
+                    {openMenuId === product.id && (
+                      <>
+                        {/* Invisible backdrop to close menu */}
+                        <div className="fixed inset-0 z-40" onClick={() => setOpenMenuId(null)} />
+                        
+                        <div className="absolute right-8 top-10 z-50 w-48 rounded-md border bg-popover text-popover-foreground shadow-md outline-none animate-in fade-in zoom-in-95">
+                          <div className="p-1">
+                            <button className="flex w-full cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground" onClick={() => navigate(`/products/${product.id}`)}>
+                              <Edit className="mr-2 h-4 w-4" /> Edit Product
+                            </button>
+                            <button className="flex w-full cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground" onClick={() => handleDuplicate(product.id)}>
+                              <Copy className="mr-2 h-4 w-4" /> Duplicate
+                            </button>
+                            <button className="flex w-full cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none text-destructive hover:bg-destructive/10" onClick={() => { setProductToDelete(product.id); setOpenMenuId(null); }}>
+                              <Trash2 className="mr-2 h-4 w-4" /> Delete
+                            </button>
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
           </TableBody>
         </Table>
         
         <div className="p-4 border-t flex items-center justify-between text-sm text-muted-foreground">
-          <div>Showing 1 to 5 of 120 results</div>
+          <div>
+            Showing {Math.min((page - 1) * itemsPerPage + 1, filteredProducts.length)} to {Math.min(page * itemsPerPage, filteredProducts.length)} of {filteredProducts.length} results
+          </div>
           <div className="flex gap-1">
-            <Button variant="outline" size="sm" disabled>Previous</Button>
-            <Button variant="outline" size="sm">Next</Button>
+            <Button variant="outline" size="sm" disabled={page === 1} onClick={() => setPage(p => p - 1)}>Previous</Button>
+            <Button variant="outline" size="sm" disabled={page === totalPages || totalPages === 0} onClick={() => setPage(p => p + 1)}>Next</Button>
           </div>
         </div>
       </div>
+
+      <ConfirmModal
+        isOpen={!!productToDelete}
+        onClose={() => setProductToDelete(null)}
+        onConfirm={handleDelete}
+        title="Delete Product"
+        description="Are you sure you want to delete this product? This action cannot be undone."
+        variant="destructive"
+        confirmText="Delete"
+      />
     </div>
   );
 }
