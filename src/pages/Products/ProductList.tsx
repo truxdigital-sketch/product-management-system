@@ -10,11 +10,13 @@ import {
 } from '@/components/ui/table';
 import { useNavigate } from 'react-router-dom';
 import { useProductStore } from '@/store/useProductStore';
+import { useDiscountStore } from '@/store/useDiscountStore';
 import { ConfirmModal } from '@/components/ui/modal';
 
 export function ProductList() {
   const navigate = useNavigate();
   const { products, deleteProduct, duplicateProduct } = useProductStore();
+  const { offers } = useDiscountStore();
   
   const [searchTerm, setSearchTerm] = useState('');
   const [page, setPage] = useState(1);
@@ -116,18 +118,63 @@ export function ProductList() {
                   </TableCell>
                   <TableCell className="font-medium">
                     <div className="flex items-center gap-3 cursor-pointer hover:underline" onClick={() => navigate(`/products/${product.id}`)}>
-                      <div className="w-10 h-10 rounded-md bg-muted flex items-center justify-center shrink-0 border overflow-hidden">
+                      <div className="w-10 h-10 rounded-md bg-muted flex items-center justify-center shrink-0 border overflow-hidden relative">
                         {product.images?.[0] ? (
                           <img src={product.images[0]} className="w-full h-full object-cover" alt="" />
                         ) : (
                           <span className="text-muted-foreground text-xs">{product.name.charAt(0)}</span>
                         )}
                       </div>
-                      {product.name}
+                      <div className="flex flex-col">
+                        <span className="flex items-center gap-2">
+                          {product.name}
+                          {(() => {
+                            let showBadge = false;
+                            if (product.sale_price) showBadge = true;
+                            if (product.active_offer_id) {
+                              const offer = offers.find(o => o.id === product.active_offer_id);
+                              if (offer && offer.display_show_badge) showBadge = true;
+                            }
+                            if (showBadge) {
+                              return <Badge variant="secondary" className="bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 text-[10px] px-1 py-0 h-4">Sale</Badge>;
+                            }
+                            return null;
+                          })()}
+                        </span>
+                      </div>
                     </div>
                   </TableCell>
                   <TableCell className="text-muted-foreground">{product.sku}</TableCell>
-                  <TableCell>${product.price.toFixed(2)}</TableCell>
+                  <TableCell>
+                    {(() => {
+                      let finalPrice = product.sale_price || product.price;
+                      if (product.active_offer_id) {
+                        const offer = offers.find(o => o.id === product.active_offer_id);
+                        if (offer) {
+                          if (offer.type === 'percentage') {
+                            finalPrice = finalPrice * (1 - (offer.discount_value / 100));
+                          } else if (offer.type === 'fixed') {
+                            finalPrice = Math.max(0, finalPrice - offer.discount_value);
+                          }
+                        }
+                      }
+                      
+                      const isDiscounted = finalPrice < product.price;
+                      
+                      return (
+                        <div className="flex flex-col">
+                          <span className={isDiscounted ? "text-primary font-medium" : ""}>
+                            ${finalPrice.toFixed(2)}
+                          </span>
+                          {isDiscounted && (
+                            <span className="text-xs text-muted-foreground line-through">
+                              ${product.price.toFixed(2)}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })()}
+                  </TableCell>
                   <TableCell>
                     <Badge 
                       variant={

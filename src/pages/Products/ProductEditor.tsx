@@ -10,6 +10,7 @@ import { cn } from '@/utils/utils';
 import { aiService } from '@/services/ai';
 import { useProductStore } from '@/store/useProductStore';
 import { useCategoryStore } from '@/store/useCategoryStore';
+import { useDiscountStore } from '@/store/useDiscountStore';
 import type { ProductStatus } from '@/types';
 
 const tabs = [
@@ -26,6 +27,7 @@ export function ProductEditor() {
   const { id } = useParams();
   const { products, addProduct, updateProduct } = useProductStore();
   const { categories } = useCategoryStore();
+  const { offers } = useDiscountStore();
   
   const [activeTab, setActiveTab] = useState('general');
 
@@ -37,6 +39,8 @@ export function ProductEditor() {
   const [sku, setSku] = useState('');
   const [barcode, setBarcode] = useState('');
   const [price, setPrice] = useState<number>(0);
+  const [salePrice, setSalePrice] = useState<number | ''>('');
+  const [activeOfferId, setActiveOfferId] = useState<string>('');
   const [comparePrice, setComparePrice] = useState<number | null>(null);
   const [costPrice, setCostPrice] = useState<number | null>(null);
   const [categoryId, setCategoryId] = useState<string>('');
@@ -59,6 +63,8 @@ export function ProductEditor() {
         setSku(existing.sku);
         setBarcode(existing.barcode);
         setPrice(existing.price);
+        setSalePrice(existing.sale_price || '');
+        setActiveOfferId(existing.active_offer_id || '');
         setComparePrice(existing.compare_at_price);
         setCostPrice(existing.cost_price);
         setCategoryId(existing.category_id || '');
@@ -76,6 +82,8 @@ export function ProductEditor() {
       sku,
       barcode,
       price: Number(price),
+      sale_price: salePrice === '' ? null : Number(salePrice),
+      active_offer_id: activeOfferId || null,
       compare_at_price: comparePrice ? Number(comparePrice) : null,
       cost_price: costPrice ? Number(costPrice) : null,
       category_id: categoryId || null,
@@ -316,31 +324,120 @@ export function ProductEditor() {
             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
               <Card>
                 <CardHeader>
-                  <CardTitle>Pricing Strategy</CardTitle>
-                  <CardDescription>Set regular and promotional pricing.</CardDescription>
+                  <CardTitle>Pricing & Discounts</CardTitle>
+                  <CardDescription>Set regular pricing, sale pricing, and active promotional offers.</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-6">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <label className="text-sm font-medium">Regular Price</label>
+                      <label className="text-sm font-medium">Regular Price <span className="text-destructive">*</span></label>
                       <div className="relative">
                         <span className="absolute left-3 top-2.5 text-muted-foreground">$</span>
-                        <Input type="number" placeholder="0.00" className="pl-7" value={price} onChange={e => setPrice(Number(e.target.value))} />
+                        <Input type="number" min="0" placeholder="0.00" className="pl-7" value={price} onChange={e => setPrice(Number(e.target.value))} />
                       </div>
                     </div>
                     <div className="space-y-2">
-                      <label className="text-sm font-medium">Compare at Price (Sale)</label>
+                      <label className="text-sm font-medium text-muted-foreground">Compare at Price</label>
                       <div className="relative">
                         <span className="absolute left-3 top-2.5 text-muted-foreground">$</span>
-                        <Input type="number" placeholder="0.00" className="pl-7" value={comparePrice || ''} onChange={e => setComparePrice(Number(e.target.value) || null)} />
+                        <Input type="number" min="0" placeholder="0.00" className="pl-7" value={comparePrice || ''} onChange={e => setComparePrice(Number(e.target.value) || null)} />
                       </div>
                     </div>
                   </div>
-                  <div className="space-y-2">
+
+                  <div className="pt-4 border-t border-border/50">
+                    <h3 className="text-sm font-semibold mb-4">Discounts & Offers</h3>
+                    <div className="grid grid-cols-2 gap-4 mb-4">
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Sale Price</label>
+                        <div className="relative">
+                          <span className="absolute left-3 top-2.5 text-muted-foreground">$</span>
+                          <Input 
+                            type="number" 
+                            min="0" 
+                            max={price}
+                            placeholder="0.00" 
+                            className="pl-7" 
+                            value={salePrice} 
+                            onChange={e => setSalePrice(e.target.value ? Number(e.target.value) : '')} 
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Active Promotional Offer</label>
+                        <select 
+                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                          value={activeOfferId}
+                          onChange={(e) => setActiveOfferId(e.target.value)}
+                        >
+                          <option value="">None</option>
+                          {offers.filter(o => o.status === 'active' || o.status === 'scheduled').map(offer => (
+                            <option key={offer.id} value={offer.id}>
+                              {offer.name} ({offer.type === 'percentage' ? `${offer.discount_value}% Off` : `$${offer.discount_value} Off`})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                    
+                    {/* Dynamic Price Preview */}
+                    <div className="bg-muted p-4 rounded-lg flex items-center justify-between border">
+                      <div>
+                        <p className="text-sm font-medium text-muted-foreground mb-1">Final Selling Price Preview</p>
+                        <div className="flex items-center gap-3">
+                          {(salePrice || activeOfferId) ? (
+                            <>
+                              <span className="text-lg font-semibold text-primary">
+                                ${ (() => {
+                                  let finalPrice = Number(salePrice) || price;
+                                  if (activeOfferId) {
+                                    const offer = offers.find(o => o.id === activeOfferId);
+                                    if (offer) {
+                                      if (offer.type === 'percentage') {
+                                        finalPrice = finalPrice * (1 - (offer.discount_value / 100));
+                                      } else if (offer.type === 'fixed') {
+                                        finalPrice = Math.max(0, finalPrice - offer.discount_value);
+                                      }
+                                    }
+                                  }
+                                  return finalPrice.toFixed(2);
+                                })()}
+                              </span>
+                              <span className="text-sm text-muted-foreground line-through">${price.toFixed(2)}</span>
+                            </>
+                          ) : (
+                            <span className="text-lg font-semibold">${price.toFixed(2)}</span>
+                          )}
+                        </div>
+                      </div>
+                      
+                      {(salePrice || activeOfferId) && price > 0 && (
+                        <div className="text-right">
+                           <span className="inline-flex items-center rounded-md bg-green-50 px-2 py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20 dark:bg-green-500/10 dark:text-green-400 dark:ring-green-500/20">
+                            {(() => {
+                              let finalPrice = Number(salePrice) || price;
+                              if (activeOfferId) {
+                                const offer = offers.find(o => o.id === activeOfferId);
+                                if (offer) {
+                                  if (offer.type === 'percentage') finalPrice = finalPrice * (1 - (offer.discount_value / 100));
+                                  else if (offer.type === 'fixed') finalPrice = Math.max(0, finalPrice - offer.discount_value);
+                                }
+                              }
+                              const saved = price - finalPrice;
+                              const percent = Math.round((saved / price) * 100);
+                              return `${percent}% Savings`;
+                            })()}
+                           </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2 pt-4 border-t border-border/50">
                     <label className="text-sm font-medium">Cost per item (Cost Price)</label>
                     <div className="relative">
                       <span className="absolute left-3 top-2.5 text-muted-foreground">$</span>
-                      <Input type="number" placeholder="0.00" className="pl-7" value={costPrice || ''} onChange={e => setCostPrice(Number(e.target.value) || null)} />
+                      <Input type="number" min="0" placeholder="0.00" className="pl-7" value={costPrice || ''} onChange={e => setCostPrice(Number(e.target.value) || null)} />
                     </div>
                     <p className="text-xs text-muted-foreground">Customers won't see this. Used for margin calculations.</p>
                   </div>

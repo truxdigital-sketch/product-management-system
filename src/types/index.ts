@@ -10,8 +10,10 @@ export interface Product {
   sku: string;
   barcode: string;
   price: number;
+  sale_price: number | null;
   compare_at_price: number | null;
   cost_price: number | null;
+  active_offer_id: string | null;
   status: ProductStatus;
   category_id: string | null; // simplified for now
   brand_id: string | null;

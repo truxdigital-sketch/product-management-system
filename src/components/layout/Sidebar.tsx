@@ -1,4 +1,3 @@
-
 import { NavLink } from 'react-router-dom';
 import { 
   LayoutDashboard, 
@@ -9,7 +8,8 @@ import {
   Star,
   Layers,
   ArrowRightLeft,
-  BarChart3
+  BarChart3,
+  Tag
 } from 'lucide-react';
 import { cn } from '@/utils/utils';
 
@@ -18,6 +18,7 @@ const navItems = [
   { icon: Package, label: 'Products', href: '/products' },
   { icon: Layers, label: 'Categories', href: '/categories' },
   { icon: Tags, label: 'Brands', href: '/brands' },
+  { icon: Tag, label: 'Discounts', href: '/discounts' },
   { icon: ArrowRightLeft, label: 'Inventory', href: '/inventory' },
   { icon: ImageIcon, label: 'Media', href: '/media' },
   { icon: Star, label: 'Reviews', href: '/reviews' },

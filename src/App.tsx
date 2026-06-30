@@ -6,6 +6,8 @@ import { ProductEditor } from "@/pages/Products/ProductEditor";
 import { Categories } from "@/pages/Categories";
 import { Brands } from "@/pages/Brands";
 import { Reviews } from "@/pages/Reviews";
+import { Discounts } from "@/pages/Discounts";
+import { DiscountEditor } from "@/pages/Discounts/DiscountEditor";
 import { Media } from "@/pages/Media";
 import { Inventory } from "@/pages/Inventory";
 import { Analytics } from "@/pages/Analytics";
@@ -43,6 +45,9 @@ function App() {
             <Route path="categories" element={<Categories />} />
             <Route path="brands" element={<Brands />} />
             <Route path="reviews" element={<Reviews />} />
+            <Route path="discounts" element={<Discounts />} />
+            <Route path="discounts/new" element={<DiscountEditor />} />
+            <Route path="discounts/:id" element={<DiscountEditor />} />
             <Route path="media" element={<Media />} />
             <Route path="inventory" element={<Inventory />} />
             <Route path="analytics" element={<Analytics />} />
