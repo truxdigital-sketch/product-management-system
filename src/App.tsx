@@ -14,6 +14,8 @@ import { Login } from "@/pages/Auth/Login";
 import { Register } from "@/pages/Auth/Register";
 import { useAuthStore } from "@/store/useAuthStore";
 
+import { ThemeProvider } from "@/components/ThemeProvider";
+
 // Protected Route Wrapper
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated } = useAuthStore();
@@ -25,28 +27,30 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
 function App() {
   return (
-    <Router>
-      <Routes>
-        {/* Public Routes */}
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        
-        {/* Protected Routes */}
-        <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
-          <Route index element={<Dashboard />} />
-          <Route path="products" element={<ProductList />} />
-          <Route path="products/new" element={<ProductEditor />} />
-          <Route path="products/:id" element={<ProductEditor />} />
-          <Route path="categories" element={<Categories />} />
-          <Route path="brands" element={<Brands />} />
-          <Route path="reviews" element={<Reviews />} />
-          <Route path="media" element={<Media />} />
-          <Route path="inventory" element={<Inventory />} />
-          <Route path="analytics" element={<Analytics />} />
-          <Route path="settings" element={<Settings />} />
-        </Route>
-      </Routes>
-    </Router>
+    <ThemeProvider>
+      <Router>
+        <Routes>
+          {/* Public Routes */}
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          
+          {/* Protected Routes */}
+          <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
+            <Route index element={<Dashboard />} />
+            <Route path="products" element={<ProductList />} />
+            <Route path="products/new" element={<ProductEditor />} />
+            <Route path="products/:id" element={<ProductEditor />} />
+            <Route path="categories" element={<Categories />} />
+            <Route path="brands" element={<Brands />} />
+            <Route path="reviews" element={<Reviews />} />
+            <Route path="media" element={<Media />} />
+            <Route path="inventory" element={<Inventory />} />
+            <Route path="analytics" element={<Analytics />} />
+            <Route path="settings" element={<Settings />} />
+          </Route>
+        </Routes>
+      </Router>
+    </ThemeProvider>
   );
 }
 

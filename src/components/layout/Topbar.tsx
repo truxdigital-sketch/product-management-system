@@ -1,12 +1,14 @@
 import { useState, useRef, useEffect } from 'react';
-import { Bell, Search, User, LogOut, Settings, Moon, HelpCircle } from 'lucide-react';
+import { Bell, Search, User, LogOut, Settings, Moon, Sun, HelpCircle } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useThemeStore } from '@/store/useThemeStore';
 import { useNavigate } from 'react-router-dom';
 
 export function Topbar() {
   const { user, logout } = useAuthStore();
+  const { theme, setTheme } = useThemeStore();
   const navigate = useNavigate();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -89,11 +91,27 @@ export function Topbar() {
                 </button>
               </div>
               <div className="p-1 border-t border-border/50">
+                <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">Theme</div>
                 <button 
-                  className="flex w-full items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground cursor-pointer"
+                  className={`flex w-full items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground cursor-pointer ${theme === 'light' ? 'bg-accent text-accent-foreground' : ''}`}
+                  onClick={() => setTheme('light')}
+                >
+                  <Sun className="mr-2 h-4 w-4" /> Light Mode
+                </button>
+                <button 
+                  className={`flex w-full items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground cursor-pointer ${theme === 'dark' ? 'bg-accent text-accent-foreground' : ''}`}
+                  onClick={() => setTheme('dark')}
                 >
                   <Moon className="mr-2 h-4 w-4" /> Dark Mode
                 </button>
+                <button 
+                  className={`flex w-full items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground cursor-pointer ${theme === 'system' ? 'bg-accent text-accent-foreground' : ''}`}
+                  onClick={() => setTheme('system')}
+                >
+                  <Settings className="mr-2 h-4 w-4" /> System
+                </button>
+              </div>
+              <div className="p-1 border-t border-border/50">
                 <button 
                   className="flex w-full items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground cursor-pointer"
                 >
